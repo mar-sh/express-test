@@ -2,41 +2,51 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 
+const helpers = require('./helper');
+const {
+  paginate,
+  sort,
+  validateId,
+  validateInputs,
+  bubbleSort,
+  quickSort,
+} = helpers;
+
 const app = express();
 const port = 3000;
 
 // Fake database
 const userDatabase = [
   {
-    email: "jennifer@gmail.com",
+    email: 'jennifer@gmail.com',
     name: 'jenifer',
-    password: "1234jenifer"
+    password: '1234jenifer',
   },
   {
-    email: "bram@gmail.com",
+    email: 'bram@gmail.com',
     name: 'bravo',
-    password: "1bravo"
+    password: '1bravo',
   },
   {
-    email: "tom@gmail.com",
+    email: 'tom@gmail.com',
     name: 'tom',
-    password: "1234jenitom"
+    password: '1234jenitom',
   },
   {
-    email: "maximillian@gmail.com",
+    email: 'maximillian@gmail.com',
     name: 'max',
-    password: "1234jenifer"
+    password: '1234jenifer',
   },
   {
-    email: "tomo@gmail.com",
+    email: 'tomo@gmail.com',
     name: 'tom',
-    password: "1234jenifer"
+    password: '1234jenifer',
   },
   {
-    email: "marooke@gmail.com",
+    email: 'marooke@gmail.com',
     name: 'mar',
-    password: "1234jenifer"
-  }
+    password: '1234jenifer',
+  },
 ];
 
 app.use(bodyParser.json());
@@ -51,28 +61,21 @@ app.use(bodyParser.urlencoded({ extended: true }));
  * page : current page number.
  */
 app.get('/users', (req, res) => {
-  const { page, limit, sortMethod, sortAttribute } = req.query; 
+  const { page, limit, sortMethod, sortAttribute } = req.query;
+  const data = sort(userDatabase, sortAttribute, sortMethod);
+  const { hasNext, results } = paginate(data, page, limit);
 
-  return res.json(userDatabase);
+  return res.json({ hasNext, results });
 });
 
 // An example of a handler with simple input validation.
 app.get('/users/:id', (req, res) => {
   let { id } = req.params;
 
-  // Input validation
-  if (id <= 0 || !parseInt(id, 10) || isNaN(id) || id > userDatabase.length) {
-    res.status(500);
-    return res.json({
-      error: {
-        code: 500,
-        message: 'Could not find user',
-      }
-    });
+  if (validateId(id)) {
+    id = id - 1;
+    return res.json(userDatabase[id]);
   }
-  
-  id = id - 1;
-  return res.json(userDatabase[id]);
 });
 
 /**
@@ -80,7 +83,15 @@ app.get('/users/:id', (req, res) => {
  * Create a new user and save it into userDatabase.
  */
 app.post('/users', (req, res) => {
-  return {};
+  const { name, email, password } = req.body;
+  const results = validateInputs(userDatabase, email, name, password);
+
+  if (typeof results == 'boolean' && results) {
+    userDatabase.push({ email, name, password });
+    return res.status(201).json({ email, name });
+  } else {
+    return res.status(400).json(results);
+  }
 });
 
 /**
@@ -113,7 +124,13 @@ app.patch('/users/:id/changepassword', (req, res) => {
  * Create handler for deleting and entry
  */
 app.delete('/users/:id', (req, res) => {
-  return {};
+  let { id } = req.params;
+
+  // Soft delete
+  if (validateId(id)) {
+    userDatabase[id - 1].deleted = true;
+    return res.json({ id });
+  }
 });
 
 /**
@@ -122,9 +139,10 @@ app.delete('/users/:id', (req, res) => {
  * of third party lib for bubble sorting algorithm.
  */
 app.get('/users/sort/bubble', (req, res) => {
-  const { sortAttribute, sortMethod } = req.body; 
+  const { sortAttribute, sortMethod } = req.body;
+  const results = bubbleSort(userDatabase, sortAttribute, sortMethod);
 
-  return [];
+  return res.json({ results });
 });
 
 /**
@@ -134,30 +152,31 @@ app.get('/users/sort/bubble', (req, res) => {
  */
 app.get('/users/sort/divide', (req, res) => {
   const { sortAttribute, sortMethod } = req.body;
+  const results = quickSort(userDatabase, sortAttribute, sortMethod);
 
-  return [];
+  return res.json({ results });
 });
 
 // Not found handler
 app.use('*', (req, res) => {
   res.status(404);
-  
+
   res.json({
     error: {
       code: 404,
-      message: 'Could not find any associated resource'
-    }
-  })
+      message: 'Could not find any associated resource',
+    },
+  });
 });
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(500).json({
+
+  res.status(err.code || 500).json({
     error: {
-      code: 500,
-      message: err.message || 'Server Error'
-    }
+      code: err.code || 500,
+      message: err.message || 'Server Error',
+    },
   });
 });
 
@@ -166,7 +185,7 @@ app.use((err, req, res, next) => {
  * Recreating Handlers Using Postgres
  * Clone this project and do these tasks below:
  * - Create a seeder from userDatabase object and save it into Postgres.
- * - Recreate all the handlers and use sequelize to sort, save, edit etc (except for task 1.7 and 1.8) 
+ * - Recreate all the handlers and use sequelize to sort, save, edit etc (except for task 1.7 and 1.8)
  */
 
 app.listen(port, () => console.log(`App is running on port, ${port}`));
