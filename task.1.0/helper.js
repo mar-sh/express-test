@@ -1,3 +1,7 @@
+const fs = require('fs');
+const path = require('path');
+const csv = require('fast-csv');
+
 function paginate(database, pageNumber = 1, pageLimit) {
   const currentPage = Number(pageNumber - 1);
   const perPage = Number(pageLimit) || database.length;
@@ -44,19 +48,39 @@ function validateId(database, id) {
     id > database.length ||
     database[id - 1].deleted
   ) {
-    return true;
-  } else throw { code: 404, message: 'Could not find user with that id' };
+    return false;
+  } else return true;
 }
 
 function validateInputs(database, email, name, password) {
   const errors = [];
+  const validatedEmail = validateEmail(database, email);
+  const validatedName = validateName(name);
+  const validatedPassword = validatePassword(password);
 
-  if (!/.+@.+\..+/gi.test(email)) {
+  if (
+    typeof validatedEmail == 'boolean' &&
+    typeof validatedName == 'boolean' &&
+    typeof validatedPassword == 'boolean'
+  ) {
+    return true;
+  } else {
+    Array.isArray(validatedEmail) && errors.push(...validatedEmail);
+    Array.isArray(validatedName) && errors.push(...validatedName);
+    Array.isArray(validatedPassword) && errors.push(...validatedPassword);
+  }
+  return errors;
+}
+
+function validateEmail(database, email, httpMethod = '') {
+  const errors = [];
+
+  if (email && !/.+@.+\..+/gi.test(email)) {
     errors.push({ code: 400, field: 'email', message: 'Invalid email format' });
   }
 
   database.forEach(el => {
-    if (el['email'] == email) {
+    if (email && el['email'] == email && httpMethod != 'PUT') {
       errors.push({
         code: 409,
         field: 'email',
@@ -65,7 +89,15 @@ function validateInputs(database, email, name, password) {
     }
   });
 
-  if (name.length < 3) {
+  if (errors.length) {
+    return errors;
+  } else return true;
+}
+
+function validateName(name) {
+  const errors = [];
+
+  if (name && name.length < 3) {
     errors.push({
       code: 400,
       field: 'name',
@@ -73,7 +105,15 @@ function validateInputs(database, email, name, password) {
     });
   }
 
-  if (password.length < 3) {
+  if (errors.length) {
+    return errors;
+  } else return true;
+}
+
+function validatePassword(password) {
+  const errors = [];
+
+  if (password && password.length < 3) {
     errors.push({
       code: 400,
       field: 'password',
@@ -83,9 +123,7 @@ function validateInputs(database, email, name, password) {
 
   if (errors.length) {
     return errors;
-  }
-
-  return true;
+  } else return true;
 }
 
 function bubbleSort(database, attribute = 'name', method = 'asc') {
@@ -146,11 +184,27 @@ function quickSort(database, attribute = 'name', method = 'asc') {
       ];
 }
 
+function bulkUpload(database) {
+  const stream = fs.createReadStream(path.resolve(__dirname, 'users.csv'));
+
+  return new Promise((resolve, reject) => {
+    stream
+      .pipe(csv.parse({ headers: true }))
+      .on('data', row => database.push(row))
+      .on('end', () => resolve(database))
+      .on('error', err => reject(err));
+  });
+}
+
 module.exports = {
   sort,
   paginate,
   validateId,
   validateInputs,
+  validateEmail,
+  validateName,
+  validatePassword,
   bubbleSort,
   quickSort,
+  bulkUpload,
 };

@@ -8,8 +8,12 @@ const {
   sort,
   validateId,
   validateInputs,
+  validateEmail,
+  validateName,
+  validatePassword,
   bubbleSort,
   quickSort,
+  bulkUpload,
 } = helpers;
 
 const app = express();
@@ -72,9 +76,12 @@ app.get('/users', (req, res) => {
 app.get('/users/:id', (req, res) => {
   let { id } = req.params;
 
-  if (validateId(id)) {
+  if (validateId(userDatabase, id)) {
     id = id - 1;
+
     return res.json(userDatabase[id]);
+  } else {
+    throw { code: 404, message: 'Could not find user with that id' };
   }
 });
 
@@ -86,8 +93,9 @@ app.post('/users', (req, res) => {
   const { name, email, password } = req.body;
   const results = validateInputs(userDatabase, email, name, password);
 
-  if (typeof results == 'boolean' && results) {
+  if (typeof results == 'boolean') {
     userDatabase.push({ email, name, password });
+
     return res.status(201).json({ email, name });
   } else {
     return res.status(400).json(results);
@@ -98,8 +106,14 @@ app.post('/users', (req, res) => {
  * Task 1.3 Bulk Upload
  * Parse provided csv file and save all the data into userDatabase.
  */
-app.post('/users/csv', (req, res) => {
-  return [];
+app.post('/users/csv', (req, res, next) => {
+
+  bulkUpload(userDatabase)
+    .then((results) => {
+      return res.json(results);
+    })
+    .catch(next);
+
 });
 
 /**
@@ -108,7 +122,31 @@ app.post('/users/csv', (req, res) => {
  * handler to serve user editting.
  */
 app.put('/users/:id', (req, res) => {
-  return {};
+  let { id } = req.params;
+  const errors = [];
+  const { email, name } = req.body;
+  const validatedEmail = validateEmail(userDatabase, email, 'PUT');
+  const validatedName = validateName(name);
+
+  if (validateId(userDatabase, id)) {
+    if (
+      typeof validatedEmail == 'boolean' &&
+      typeof validatedName == 'boolean'
+    ) {
+      id = id - 1;
+      userDatabase[id]['email'] = email;
+      userDatabase[id]['name'] = name;
+
+      return res.json({ name, email });
+    } else {
+      Array.isArray(validatedEmail) && errors.push(...validatedEmail);
+      Array.isArray(validatedName) && errors.push(...validatedName);
+
+      return res.status(400).json(errors);
+    }
+  } else {
+    throw { code: 404, message: 'Could not find user with that id' };
+  }
 });
 
 /**
@@ -116,7 +154,27 @@ app.put('/users/:id', (req, res) => {
  * Create handler for change password handler
  */
 app.patch('/users/:id/changepassword', (req, res) => {
-  return {};
+  let { id } = req.params;
+  const { password } = req.body;
+  const result = validatePassword(password);
+
+  if (validateId(userDatabase, id)) {
+    if (validateId(userDatabase, id) && typeof result == 'boolean') {
+      id = id - 1;
+      const { name, email } = userDatabase[id];
+      userDatabase[id].password = password;
+
+      return res.json({
+        message: 'Password is successfully changed',
+        name,
+        email,
+      });
+    } else {
+      return res.status(400).json(result);
+    }
+  } else {
+    throw { code: 404, message: 'Could not find user with that id' };
+  }
 });
 
 /**
@@ -127,9 +185,12 @@ app.delete('/users/:id', (req, res) => {
   let { id } = req.params;
 
   // Soft delete
-  if (validateId(id)) {
+  if (validateId(userDatabase, id)) {
     userDatabase[id - 1].deleted = true;
+
     return res.json({ id });
+  } else {
+    throw { code: 404, message: 'Could not find user with that id' };
   }
 });
 
@@ -171,7 +232,6 @@ app.use('*', (req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
-
   res.status(err.code || 500).json({
     error: {
       code: err.code || 500,
@@ -188,4 +248,4 @@ app.use((err, req, res, next) => {
  * - Recreate all the handlers and use sequelize to sort, save, edit etc (except for task 1.7 and 1.8)
  */
 
-app.listen(port, () => console.log(`App is running on port, ${port}`));
+app.listen(port, () => console.log(`App is running on port: ${port}`));
