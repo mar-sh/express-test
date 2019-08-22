@@ -123,10 +123,10 @@ app.post('/users/csv', (req, res, next) => {
  */
 app.put('/users/:id', (req, res) => {
   let { id } = req.params;
-  const errors = [];
   const { email, name } = req.body;
   const validatedEmail = validateEmail(userDatabase, email, 'PUT');
   const validatedName = validateName(name);
+  const errors = [];
 
   if (validateId(userDatabase, id)) {
     if (
