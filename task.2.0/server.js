@@ -1,13 +1,14 @@
 const chalk = require('chalk');
 const dotenv = require('dotenv');
 const express = require('express');
+const moment = require('moment');
 const morgan = require('morgan');
 
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3000;
-
+const mainRoute = require('./routes');
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -39,7 +40,7 @@ if (process.env.NODE_ENV == 'development') {
   app.use(morgan('dev'));
 }
 
-app.use('/api', mainRoute);
+app.use('/', mainRoute);
 
 app.listen(port, () => {
   if (process.env.NODE_ENV == 'development') {
