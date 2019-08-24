@@ -8,7 +8,7 @@ const nodeErrors = [
   'TypeError',
   'URIError',
 ];
-const sequelizeErrors = ['BaseError', 'ValidationError', 'ValidationErrorItem'];
+const sequelizeErrors = ['BaseError', 'SequelizeValidationError'];
 
 function setError(errorObject) {
   const error = { ...errorObject };
@@ -16,14 +16,16 @@ function setError(errorObject) {
   if (error.code && error.message) {
     return error;
   }
-  if (nodeError.includes(error.name)) {
+  if (nodeErrors.includes(error.name)) {
     error.code = 500;
     return error;
   }
   if (sequelizeErrors.includes(error.name)) {
-    if (error.message.match(/is already in use/gi)) {
-      error.code = 409;
-    } else error.code = 400;
+    const {errors} = error;
+    error.message = [];
+
+    errors.forEach(err => error.message.push(err.message));
+    error.code = 400;
     return error;
   }
   error.code = 500;
