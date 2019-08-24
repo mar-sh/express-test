@@ -10,3 +10,17 @@ readability and try to follow the standard rest API.
 Re-create all handlers using sequelize orm and save it into postgres database.
 Re-implement userDatabase using seeder.
 
+
+```
+npm i
+```
+
+### Task 1
+```
+$ cd task.1.0
+```
+
+### Task 2
+```
+$ cd task.2.0
+```

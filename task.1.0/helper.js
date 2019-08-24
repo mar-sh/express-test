@@ -184,6 +184,17 @@ function quickSort(database, attribute = 'name', method = 'asc') {
       ];
 }
 
+// function bulkUpload(database) {
+//   const data = fs
+//   .readFileSync(path.resolve(__dirname, 'users.csv'), 'utf8')
+//   .split('\n')
+//   .slice(1)
+//   .map(row => row.split(','))
+//   .map(parsed => ({ email: parsed[0], name: parsed[1], password: parsed[2] }));
+
+//   return [...database, ...data];
+// }
+
 function bulkUpload(database) {
   const stream = fs.createReadStream(path.resolve(__dirname, 'users.csv'));
 

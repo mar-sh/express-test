@@ -110,7 +110,7 @@ app.post('/users/csv', (req, res, next) => {
 
   bulkUpload(userDatabase)
     .then((results) => {
-      return res.json(results);
+      return res.status(201).json(results);
     })
     .catch(next);
 
